@@ -1,101 +1,153 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { Article, SearchResponse } from "@/types";
+import axios from 'axios';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [query, setQuery] = useState("");
+  const [numArticles, setNumArticles] = useState(3);
+  const [timespan, setTimespan] = useState(1);
+  const [response, setResponse] = useState<SearchResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const handleSearch = async () => {
+    try {
+      setIsLoading(true);
+      const res = await axios.get('/api/search', {
+        params: {
+          query: query,
+          numarticles: numArticles,
+          timespan: `${timespan}w`
+        }
+      });
+      setResponse(res.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center min-h-screen p-8 font-[family-name:var(--font-geist-sans)]">
+      <main className="flex flex-col gap-8 items-center w-full max-w-2xl mt-8">
+        <h1 className="text-2xl font-bold">News Search</h1>
+        <div className="flex items-center gap-2 w-full">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Enter your search query"
+            className="p-2 border border-gray-300 rounded flex-grow text-black dark:text-black self-end"
+          />
+          <div className="flex flex-col items-center ml-2">
+            <label htmlFor="numArticles" className="text-sm mb-1 text-center">Sources</label>
+            <select
+              id="numArticles"
+              value={numArticles}
+              onChange={(e) => setNumArticles(Number(e.target.value))}
+              className="p-2 border border-gray-300 rounded text-black dark:text-black"
+              title="Number of articles"
+            >
+              {[1, 2, 3, 4, 5].map((num) => (
+                <option key={num} value={num}>
+                  {num}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col items-center ml-2">
+            <label htmlFor="timespan" className="text-sm mb-1 text-center">Weeks</label>
+            <select
+              id="timespan"
+              value={timespan}
+              onChange={(e) => setTimespan(Number(e.target.value))}
+              className="p-2 border border-gray-300 rounded text-black dark:text-black"
+              title="Number of weeks to search"
+            >
+              {[...Array(14)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            onClick={handleSearch}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 h-10 self-end w-24 flex items-center justify-center"
+            disabled={isLoading}
           >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            {isLoading ? (
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              'Search'
+            )}
+          </button>
         </div>
+        {(response?.news || response?.weather) && (
+          <div className="w-full">
+            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-auto max-w-full">
+              {response.weather && (
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold mb-2 dark:text-white">
+                    Weather in {response.weather.location}:
+                  </h3>
+                  <p className="dark:text-gray-300">
+                    Temperature: {response.weather.temperature}°F
+                  </p>
+                  <p className="dark:text-gray-300">
+                    Humidity: {response.weather.humidity}%
+                  </p>
+                  <p className="dark:text-gray-300">
+                    Wind Speed: {response.weather.windSpeed} mph
+                  </p>
+                </div>
+              )}
+              {response.news && (
+                <>
+                  <p className="mb-4 dark:text-gray-300">
+                    {response.news.text}
+                  </p>
+                  {response.news.articles.length > 0 && (
+                    <>
+                      <h3 className="text-lg font-semibold mb-2 dark:text-white">
+                        Sources:
+                      </h3>
+                      <ul className="list-disc pl-5">
+                        {response.news.articles.map(
+                          (article: Article, index: number) => (
+                            <li key={index} className="mb-2">
+                              <a
+                                href={article.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                {article.title}
+                              </a>
+                            </li>
+                          )
+                        )}
+                      </ul>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
